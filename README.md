@@ -1,0 +1,197 @@
+# WellTrack – Wellness & Hydration Tracker
+
+WellTrack is an iOS application designed to help users monitor their **mood**, **hydration**, and **daily reflections** in one place. It combines simple self‑tracking tools with motivational quotes, basic insights, and gentle reminders to encourage healthy daily habits.
+
+---
+
+## 1. Main Features
+
+- **Home Dashboard**
+  - Welcome section with a brief description of the app.
+  - Daily **motivational quote** fetched asynchronously.
+  - Quick stats:
+    - Today’s mood label.
+    - Number of journal entries.
+  - Navigation cards to quickly open Mood, Journal, Hydration, and Insights screens.
+
+- **Mood Tracking**
+  - Select your current mood using emoji‑based mood options.
+  - Add a **note** about how you feel and what happened during the day.
+  - Selected date is stored so the user’s mood can be linked to a specific day.
+  - Moods are managed by `MoodViewModel` and saved through `saveMood(note:date:)`.
+
+- **Journal**
+  - Write and view text journal entries for reflection.
+  - Entries are stored and counted for display on the Home screen.
+  - Handled by `JournalViewModel` and related views.
+
+- **Hydration Tracking**
+  - Set a **daily water intake goal** (in millilitres).
+  - Add water with quick actions and see progress toward the goal.
+  - Hydration progress is shown visually on the **Dashboard** and Hydration screens.
+
+- **Health Dashboard (Fitness Integration)**
+  - Uses **Apple HealthKit** to read:
+    - Today’s step count.
+    - Today’s active energy burned (kCal).
+  - If permission is not granted or HealthKit is unavailable, the app falls back to safe **mock values** so the UI still shows example data.
+  - Managed by `HealthKitManager` and `DashboardViewModel`.
+
+- **Insights**
+  - Summaries and trends across days/weeks (e.g., hydration trends and moods).
+  - Uses stored data to give the user a higher‑level view instead of only one day.
+
+- **Reminders (Local Notifications)**
+  - Optional **hydration reminders** scheduled every 2 hours between 8 AM and 8 PM.
+  - Implemented with `ReminderManager` using `UserNotifications`.
+
+- **Settings**
+  - Configure preferences such as:
+    - Daily hydration goal.
+    - Enabling/disabling reminders.
+  - Stored using `UserDefaults` and other managers.
+
+---
+
+## 2. App Flow
+
+The root of the application is [WellTrackApp.swift](cci:7://file:///Users/student/Desktop/IT21827730/WellTrack/WellTrack/WellTrackApp.swift:0:0-0:0), which:
+
+- Sets up **Core Data** via `CoreDataManager.shared`.
+- Injects the `managedObjectContext` into the SwiftUI environment.
+- Displays `ContentView()` as the initial screen.
+
+`ContentView` uses a **`TabView`** with 5 main tabs, each embedded in its own `NavigationStack`:
+
+1. **Home**
+   - `HomeView(moodViewModel: journalViewModel:)`
+   - Shows welcome message, motivational quote, quick stats, and navigation cards.
+
+2. **Dashboard**
+   - `DashboardView()`
+   - On appear, it:
+     - Reads the last selected date and stored hydration goal.
+     - Requests HealthKit authorization (if not in Xcode previews).
+     - Calls `viewModel.setupHealthKit()` to fetch today’s steps and active energy.
+   - Displays hydration progress and HealthKit metrics.
+
+3. **Hydration**
+   - `HydrationView()`
+   - Allows the user to:
+     - Increase water intake (e.g., in 250 ml steps).
+     - See a progress ring or bar for the current day’s water consumption.
+
+4. **Insights**
+   - `InsightsView(moodViewModel:)`
+   - Uses recorded moods and hydration data to display trends and summaries.
+
+5. **Settings**
+   - `SettingsView()`
+   - Allows configuration of:
+     - Daily hydration goal (persisted with `@AppStorage` / `UserDefaults`).
+     - Notification permissions and reminder scheduling.
+
+---
+
+## 3. Key Technologies & Frameworks
+
+- **SwiftUI**
+  - Used for all UI screens (`HomeView`, `MoodTrackerView`, `DashboardView`, `HydrationView`, `InsightsView`, `SettingsView`, etc.).
+  - Uses reactive properties like `@State`, `@StateObject`, `@ObservedObject`, `@AppStorage`.
+
+- **Combine**
+  - ViewModels conform to `ObservableObject` and expose `@Published` properties.
+  - Automatically updates SwiftUI views when data changes.
+
+- **HealthKit**
+  - `HealthKitManager`:
+    - Requests authorization to read step count and active energy burned.
+    - Fetches today’s statistics via `HKStatisticsQuery`.
+  - `DashboardViewModel`:
+    - Calls `healthKit.requestAuthorization()` and reads daily values.
+    - Uses **async/await** and `@MainActor` for clean asynchronous code.
+
+- **UserNotifications**
+  - `ReminderManager` handles:
+    - Requesting notification permissions.
+    - Scheduling repeating **hydration reminders** between 8 AM and 8 PM with `UNCalendarNotificationTrigger`.
+
+- **Core Data**
+  - Set up in `WellTrackApp` with `CoreDataManager.shared`.
+  - Used to persist structured data such as logs, moods, or entries (depending on the model configuration).
+
+- **UserDefaults / @AppStorage**
+  - Stores simple settings such as:
+    - Daily hydration goal (`"daily_hydration_goal_ml"`).
+    - Selected date timestamp for some views.
+
+- **Swift Concurrency (async/await)**
+  - Used in network/async operations:
+    - Fetching motivational quote (`QuoteManager.shared.fetchQuote()`).
+    - HealthKit authorization and statistics fetching.
+
+---
+
+## 4. How to Build and Run
+
+1. Open the project in **Xcode** (version that supports SwiftUI and iOS 17+ recommended).
+2. Select an **iOS Simulator** or a physical device.
+3. Build and run the project:
+   - Product → Run, or press `⌘ + R`.
+
+> **HealthKit & Notifications**  
+> - For full functionality, run on a **real device** and:
+>   - Allow Health access when prompted.
+>   - Allow notifications for hydration reminders.
+
+---
+
+## 5. Typical User Journey
+
+1. **Open the app**
+   - Land on the **Home** tab where a motivational quote is loaded.
+   - See today’s mood summary and number of journal entries.
+
+2. **Track today’s mood**
+   - Tap **Track Mood** card → `MoodTrackerView`.
+   - Choose an emoji for current mood and optionally type a note.
+   - Tap **Save Mood**.
+
+3. **Write a journal entry**
+   - Tap **Journal** card.
+   - Add a text entry describing the day.
+
+4. **Track hydration**
+   - Go to the **Hydration** tab or card.
+   - Set a daily goal if needed.
+   - Add water each time you drink; watch the progress indicator fill up.
+
+5. **View fitness + hydration on Dashboard**
+   - Go to the **Dashboard** tab.
+   - Grant Health permissions and view today’s steps, active energy, and hydration progress.
+
+6. **Check insights**
+   - Go to the **Insights** tab.
+   - View aggregated information such as trends and summaries over time.
+
+7. **Configure reminders and goal**
+   - Open **Settings** tab.
+   - Turn on hydration reminders (local notifications).
+   - Adjust daily hydration goal; it is saved and reflected across the app.
+
+---
+
+## 6. Limitations and Future Enhancements
+
+- Current HealthKit integration is focused on **steps** and **active energy** only.
+- Insights are basic and can be extended with more charts and correlation between mood and activity.
+- Could be expanded with:
+  - Cloud synchronization (CloudKit/Firebase).
+  - Widgets and Apple Watch support.
+  - More detailed mood categories and questionnaires.
+
+---
+
+## 7. Conclusion
+
+WellTrack demonstrates a modern iOS architecture using SwiftUI, Combine, and Swift Concurrency, combined with HealthKit, Core Data, and local notifications. The app guides users through simple but meaningful daily actions: logging moods, writing reflections, drinking water, and tracking basic activity, all inside a clean and approachable interface.
